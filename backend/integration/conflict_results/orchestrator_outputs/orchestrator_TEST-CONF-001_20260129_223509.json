@@ -1,0 +1,48 @@
+{
+  "status": "ok",
+  "conflict_id": "TEST-CONF-001",
+  "started_at": "2026-01-29T10:00:00+00:00",
+  "finished_at": "2026-01-29T10:00:05+00:00",
+  "total_execution_ms": 5000,
+  "agents": {
+    "hybrid_rag": {
+      "status": "ok",
+      "execution_ms": 100,
+      "raw_result": {
+        "resolutions": []
+      },
+      "parser_status": "ok",
+      "parser_error": null,
+      "normalized_count": 2
+    },
+    "mathematical": {
+      "status": "ok",
+      "execution_ms": 3000,
+      "raw_result": {
+        "solver_used": "genetic_algorithm"
+      },
+      "parser_status": "ok",
+      "parser_error": null,
+      "normalized_count": 1
+    }
+  },
+  "llm_judge": {
+    "status": "ok",
+    "execution_ms": 1500,
+    "ranked_resolutions": [
+      {
+        "rank": 1,
+        "resolution_id": "hybrid_1",
+        "resolution_number": 1,
+        "overall_score": 85,
+        "safety_rating": 8.0,
+        "efficiency_rating": 9.0,
+        "feasibility_rating": 8.5,
+        "robustness_rating": 7.0,
+        "justification": "Best overall solution"
+      }
+    ],
+    "raw_llm_response": "...",
+    "error": null
+  }
+}

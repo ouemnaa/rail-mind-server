@@ -1,0 +1,51 @@
+{
+  "status": "partial",
+  "conflict_id": "TEST-001",
+  "started_at": "2026-01-29T22:50:50.124840+00:00",
+  "finished_at": "2026-01-29T22:50:54.955356+00:00",
+  "total_execution_ms": 4830,
+  "agents": {
+    "hybrid_rag": {
+      "status": "ok",
+      "execution_ms": 4820,
+      "raw_result": {
+        "conflict_id": "TEST-001",
+        "conflict_summary": "",
+        "timestamp": "2026-01-29T23:50:54.947339",
+        "context_snapshot": {
+          "total_trains": 0,
+          "total_edges": 0,
+          "conflict_location": {}
+        },
+        "resolutions": [],
+        "layer1_count": 0,
+        "layer2_refinements": {
+          "historical_cases_found": 0,
+          "algorithm_resolutions": 0,
+          "hybrid_resolutions_generated": 0,
+          "total_candidates_evaluated": 0,
+          "historical_success_rates": {}
+        },
+        "generation_time_sec": 0.002394
+      },
+      "parser_status": "ok",
+      "parser_error": null,
+      "normalized_count": 0
+    },
+    "mathematical": {
+      "status": "error",
+      "execution_ms": 27,
+      "raw_result": null,
+      "parser_status": "ok",
+      "parser_error": null,
+      "normalized_count": 0
+    }
+  },
+  "llm_judge": {
+    "status": "skipped",
+    "execution_ms": 0,
+    "ranked_resolutions": null,
+    "raw_llm_response": null,
+    "error": "No candidates to judge"
+  }
+}

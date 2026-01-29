@@ -1,0 +1,145 @@
+You are an expert railway operations judge. Input: a conflict and a list of normalized candidate resolutions from two agents. 
+
+TASK: Rank the candidate resolutions and produce JSON only, matching exactly the structure below for each ranked item (do not change field names):
+
+Each ranked item must include:
+- rank (int)
+- resolution_number (int, 1-indexed position in input list)
+- resolution_id (string)
+- bullet_resolution_actions: { "actions": [ strings ] }
+- overall_score (numerical 0-100)
+- safety_rating, efficiency_rating, feasibility_rating, robustness_rating (numbers 0-10)
+- justification (short paragraph, max 2 sentences)
+- full_resolution: the complete resolution object including resolution_id, source_agent, strategy_name, actions, expected_outcome, reasoning, safety_score, efficiency_score, feasibility_score, overall_fitness, estimated_delay_min, affected_trains, side_effects, algorithm_type, raw_data
+
+**CONFLICT CONTEXT:**
+- Type: headway at MILANO CENTRALE, PAVIA
+- Location: MILANO CENTRALE--PAVIA
+- Affected Trains: REG_001, FR_002
+
+**EVALUATION CRITERIA (Equal Weight):**
+1. Safety (30%): Maintains operational safety, prevents cascading failures
+2. Efficiency (30%): Reduces delays, restores normal operations
+3. Feasibility (25%): Quick implementation with available infrastructure
+4. Robustness (15%): Handles uncertainty and side effects
+
+**IMPORTANT:**
+- Mathematical optimization solutions are AS VALID as hybrid/historical approaches
+- Lower delay metrics indicate BETTER performance
+- Judge based on OBJECTIVE CRITERIA
+
+**RESOLUTIONS TO EVALUATE:**
+
+
+### Resolution 1: Immediate Caution and Speed Reduction
+**Source:** Agent 1 (Hybrid/Historical)
+**Algorithm Type:** algorithm
+
+**Actions:**
+  1. Issue immediate caution to REG_001 driver
+  2. Reduce REG_001 speed to 60 km/h
+  3. Extend separation by holding at next signal (PAVIA)
+
+**Expected Outcome:** Restore safe headway between REG_001 and FR_002
+**Reasoning:** Headway violations risk rear-end collisions. Immediate speed reduction creates a safety buffer.
+
+**Metrics:**
+- Overall Fitness: 0.845
+- Safety: 0.800
+- Efficiency: 0.700
+- Feasibility: 0.900
+- Estimated Delay: 2.0 min
+
+**Side Effects:** None
+
+---
+
+### Resolution 2: Priority-based Rescheduling
+**Source:** Agent 1 (Hybrid/Historical)
+**Algorithm Type:** algorithm
+
+**Actions:**
+  1. Adjust train schedules to enforce minimum headway time
+  2. Delay subsequent trains if necessary
+  3. Investigate cause of headway violation
+
+**Expected Outcome:** Prevent headway violations and ensure safe separation between trains
+**Reasoning:** Headway rules ensure safe braking distance between trains. Violations risk rear-end collisions.
+
+**Metrics:**
+- Overall Fitness: 0.815
+- Safety: 0.800
+- Efficiency: 0.700
+- Feasibility: 0.850
+- Estimated Delay: 3.0 min
+
+**Side Effects:** None
+
+---
+
+### Resolution 3: Hybrid Headway Management
+**Source:** Agent 1 (Hybrid/Historical)
+**Algorithm Type:** hybrid
+
+**Actions:**
+  1. Issue caution to REG_001 driver and reduce speed to 70 km/h
+  2. Adjust train schedules to enforce minimum headway time
+  3. Re-route FR_002 to an adjacent track if feasible
+  4. Delay subsequent lower-priority trains if necessary
+
+**Expected Outcome:** Resolve headway conflict while minimizing delays
+**Reasoning:** Combines immediate caution and speed reduction with priority-based rescheduling, leveraging insights from historical cases to optimize traffic flow
+
+**Metrics:**
+- Overall Fitness: 0.810
+- Safety: 0.750
+- Efficiency: 0.750
+- Feasibility: 0.850
+- Estimated Delay: 5.0 min
+
+**Side Effects:** Potential minor delays to subsequent trains, Increased workload for dispatchers
+
+---
+
+### Resolution 4: Fast Constructive Heuristic
+**Source:** Agent 2 (Mathematical Solver)
+**Algorithm Type:** optimization_greedy
+
+**Actions:**
+  1. Hold FR_002 for 2.5 minutes
+  2. Speed up REG_001 by 10%
+
+**Expected Outcome:** Reduces total system delay to 0.0 minutes (improvement of 0.0% from baseline). Resolves headway violation through coordinated speed adjustments while maintaining safety constraints and operational feasibility. Affects 0 passengers with minimal service disruption.
+**Reasoning:** Fast constructive heuristic making locally optimal decisions at each step. Low computational overhead enables real-time deployment while maintaining acceptable solution quality. Particularly effective when immediate response is critical and solution space is well-structured. Achieves 100.0% recovery smoothness, minimizing operational disruption and maintaining schedule integrity. Implements 2 coordinated action(s) with verified constraint satisfaction and operational feasibility.
+
+**Metrics:**
+- Overall Fitness: 1.000
+- Safety: 0.900
+- Efficiency: 0.500
+- Feasibility: 0.850
+- Estimated Delay: 0.0 min
+
+**Side Effects:** Minimal cascading effects (isolated resolution), Simple implementation with minimal coordination overhead
+
+---
+
+**OUTPUT FORMAT:**
+Return ONLY a valid JSON array. No markdown, no commentary.
+The array should be named "ranked_resolutions" or be a plain array.
+
+Example structure for each item:
+{
+  "rank": 1,
+  "resolution_number": 1,
+  "resolution_id": "...",
+  "bullet_resolution_actions": { "actions": ["action1", "action2"] },
+  "overall_score": 85,
+  "safety_rating": 7.5,
+  "efficiency_rating": 9.0,
+  "feasibility_rating": 8.5,
+  "robustness_rating": 7.0,
+  "justification": "...",
+  "full_resolution": { ... complete resolution object ... }
+}
+
+Return the top 3 ranked resolutions.

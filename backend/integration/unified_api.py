@@ -23,7 +23,6 @@ Color Coding for Frontend:
 
 """
 
-import sys
 import os
 import asyncio
 import time
@@ -34,20 +33,6 @@ from typing import Optional, List, Dict, Any
 import json
 from concurrent.futures import ThreadPoolExecutor
 
-# Add project paths to sys.path
-# This allows importing from agents/ and backend/ modules
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-BACKEND_DIR = PROJECT_ROOT / "backend"
-AGENTS_DIR = PROJECT_ROOT / "agents"
-
-# Robust path injection
-sys.path.append(str(PROJECT_ROOT))
-sys.path.append(str(BACKEND_DIR))
-sys.path.append(str(BACKEND_DIR / "integration"))
-sys.path.append(str(AGENTS_DIR / "resolution-agent"))
-sys.path.append(str(AGENTS_DIR / "detection-agent" / "prediction_confilt"))
-sys.path.append(str(AGENTS_DIR / "detection-agent" / "deterministic-detection"))
-
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -55,24 +40,18 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import uvicorn
 
-# Create output directory for conflict results
+# Directories configuration
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 CONFLICTS_OUTPUT_DIR = Path(__file__).parent / "conflict_results"
 CONFLICTS_OUTPUT_DIR.mkdir(exist_ok=True)
-
-# Create orchestrator output directory
 ORCHESTRATOR_OUTPUT_DIR = CONFLICTS_OUTPUT_DIR / "orchestrator_outputs"
 ORCHESTRATOR_OUTPUT_DIR.mkdir(exist_ok=True)
 
 # Track images directory
-TRACK_IMAGES_DIR = PROJECT_ROOT / "agents" / "detection-agent" / "Vision-Based Track Fault Detection" / "images"
+TRACK_IMAGES_DIR = PROJECT_ROOT / "agents" / "detection_agent" / "vision_track_fault" / "images"
 
 # Import integration engine
-try:
-    from integration_engine import IntegrationEngine, SimulationState, UnifiedConflict
-except ImportError:
-    # Try direct import from same directory
-    sys.path.insert(0, str(Path(__file__).parent))
-    from integration_engine import IntegrationEngine, SimulationState, UnifiedConflict
+from backend.services.integration_engine import IntegrationEngine, SimulationState, UnifiedConflict
 
 
 # =============================================================================
@@ -601,7 +580,7 @@ def _run_orchestrator_sync(conflict: Dict[str, Any], context: Optional[Dict], ti
     """
     try:
         # Import orchestrator module
-        import resolution_orchestrator as orchestrator_module
+        from agents.resolution_agent import resolver as orchestrator_module
         
         # Call orchestrate function
         result = orchestrator_module.orchestrate(

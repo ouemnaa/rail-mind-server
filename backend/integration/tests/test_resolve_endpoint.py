@@ -12,9 +12,15 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 from datetime import datetime
 
-# Add parent to path for imports
-import sys
-sys.path.insert(0, str(Path(__file__).parent.parent))
+@pytest.fixture(autouse=True)
+def clear_rate_limit():
+    """Clear the rate limit store before each test."""
+    from backend.integration.unified_api import _rate_limit_store
+    _rate_limit_store.clear()
+    yield
+
+from backend.integration.unified_api import app, _convert_detection_to_orchestrator_format
+from backend.services.integration_engine import IntegrationEngine
 
 
 # Sample test data
@@ -95,12 +101,12 @@ def test_client():
     from fastapi.testclient import TestClient
     
     # Mock the IntegrationEngine to avoid full initialization
-    with patch('unified_api.IntegrationEngine') as mock_engine:
+    with patch('backend.integration.unified_api.IntegrationEngine') as mock_engine:
         mock_instance = MagicMock()
         mock_engine.return_value = mock_instance
         mock_instance.initialize.return_value = None
         
-        from unified_api import app
+        from backend.integration.unified_api import app
         client = TestClient(app)
         yield client
 
@@ -108,7 +114,7 @@ def test_client():
 @pytest.fixture
 def mock_orchestrator():
     """Mock the orchestrator module."""
-    with patch('unified_api._run_orchestrator_sync') as mock:
+    with patch('backend.integration.unified_api._run_orchestrator_sync') as mock:
         mock.return_value = MOCK_ORCHESTRATOR_OUTPUT
         yield mock
 
@@ -234,7 +240,7 @@ class TestConversionFunctions:
     
     def test_convert_detection_format(self):
         """Test converting detection to orchestrator format."""
-        from unified_api import _convert_detection_to_orchestrator_format
+        from backend.integration.unified_api import _convert_detection_to_orchestrator_format
         
         converted = _convert_detection_to_orchestrator_format(SAMPLE_DETECTION)
         
@@ -249,7 +255,7 @@ class TestConversionFunctions:
     
     def test_convert_detection_preserves_original(self):
         """Test that original detection is preserved in converted format."""
-        from unified_api import _convert_detection_to_orchestrator_format
+        from backend.integration.unified_api import _convert_detection_to_orchestrator_format
         
         converted = _convert_detection_to_orchestrator_format(SAMPLE_DETECTION)
         
