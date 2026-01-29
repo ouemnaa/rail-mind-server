@@ -662,12 +662,12 @@ def main():
     print("FAIR LLM-AS-A-JUDGE: RAILWAY CONFLICT RESOLUTION RANKING")
     print("="*70 + "\n")
     
-    # ⚠️ IMPORTANT: Replace this with your actual Groq API key!
-    GROQ_API_KEY = "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"
-    GROQ_MODEL = "llama-3.3-70b-versatile"
+    # Use environment variable for API key
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
     
-    if GROQ_API_KEY == "YOUR_API_KEY_HERE":
-        print("❌ ERROR: Please set your Groq API key in the script!")
+    if not GROQ_API_KEY:
+        print("❌ ERROR: Please set your GROQ_API_KEY environment variable!")
         return 1
     
     # Agent 1 resolutions (from JSON file)

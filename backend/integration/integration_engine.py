@@ -48,13 +48,16 @@ from dataclasses import dataclass, field
 import json
 import random
 
-# Add paths for imports
-# BASE_DIR is backend folder, detection modules are in agents/detection-agent/
-BASE_DIR = Path(__file__).resolve().parent.parent  # backend folder
-PROJECT_ROOT = BASE_DIR.parent  # rail-mind folder
-DETECTION_AGENT_DIR = PROJECT_ROOT / "agents" / "detection-agent"
-sys.path.insert(0, str(DETECTION_AGENT_DIR / "prediction_confilt"))
-sys.path.insert(0, str(DETECTION_AGENT_DIR / "deterministic-detection"))
+# Add project paths to sys.path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+BACKEND_DIR = PROJECT_ROOT / "backend"
+AGENTS_DIR = PROJECT_ROOT / "agents"
+
+# Robust path injection
+# Ensure the specific agent directories are available for direct imports as well
+sys.path.append(str(PROJECT_ROOT))
+sys.path.append(str(AGENTS_DIR / "detection-agent" / "prediction_confilt"))
+sys.path.append(str(AGENTS_DIR / "detection-agent" / "deterministic-detection"))
 
 # Prediction imports
 from predictor import ConflictPredictor
@@ -79,8 +82,8 @@ except ImportError as e:
     DetectionEngine = None
 
 # Vision-based track fault detection imports
-TRACK_FAULT_DIR = DETECTION_AGENT_DIR / "Vision-Based Track Fault Detection"
-sys.path.insert(0, str(TRACK_FAULT_DIR))
+TRACK_FAULT_DIR = AGENTS_DIR / "detection-agent" / "Vision-Based Track Fault Detection"
+sys.path.append(str(TRACK_FAULT_DIR))
 try:
     from model import TrackFaultDetector
     TRACK_FAULT_AVAILABLE = True
@@ -264,6 +267,27 @@ class IntegrationEngine:
             except Exception as e:
                 print(f"[Integration] ⚠️ Could not initialize track fault detector: {e}")
         
+    def _get_stop_station_name(self, stop: Any) -> str:
+        """Safely get station name from a route stop (dict or string)."""
+        if isinstance(stop, dict):
+            return stop.get('station_name', stop.get('id', 'UNKNOWN'))
+        return str(stop)
+
+    def _get_stop_coordinates(self, stop: Any) -> Tuple[float, float]:
+        """Safely get coordinates from a route stop."""
+        if isinstance(stop, dict):
+            return stop.get('lat', 45.4), stop.get('lon', 9.2)
+        
+        station_id = str(stop)
+        station_data = self.stations.get(station_id) or self.stations.get(station_id.upper(), {})
+        return station_data.get('lat', 45.4), station_data.get('lon', 9.2)
+
+    def _get_stop_distance(self, stop: Any) -> float:
+        """Safely get distance from previous station."""
+        if isinstance(stop, dict):
+            return stop.get('distance_from_previous_km', 30.0)
+        return 30.0 # Default fallback
+        
     def initialize(self, simulation_data_path: Optional[Path] = None) -> None:
         """
         Initialize the engine with network data.
@@ -361,13 +385,26 @@ class IntegrationEngine:
             if not route or len(route) < 2:
                 continue
             
-            # Route is already a list of dicts with station_name, lat, lon
+            # Get first and second stops
             first_stop = route[0]
             second_stop = route[1] if len(route) > 1 else route[0]
             
-            # Get station names
-            first_station_name = first_stop.get('station_name', 'UNKNOWN')
-            second_station_name = second_stop.get('station_name', 'UNKNOWN')
+            # Handle both dict and string formats
+            if isinstance(first_stop, dict):
+                first_station_name = first_stop.get('station_name', first_stop.get('id', 'UNKNOWN'))
+                first_lat = first_stop.get('lat', 45.4)
+                first_lon = first_stop.get('lon', 9.2)
+            else:
+                first_station_name = first_stop
+                # Lookup station data for coordinates
+                station_data = self.stations.get(first_station_name) or self.stations.get(first_station_name.upper(), {})
+                first_lat = station_data.get('lat', 45.4)
+                first_lon = station_data.get('lon', 9.2)
+
+            if isinstance(second_stop, dict):
+                second_station_name = second_stop.get('station_name', second_stop.get('id', 'UNKNOWN'))
+            else:
+                second_station_name = second_stop
             
             self.trains[train_id] = TrainPosition(
                 train_id=train_id,
@@ -379,8 +416,8 @@ class IntegrationEngine:
                 speed_kmh=0,
                 delay_sec=0,
                 status="at_station",
-                lat=first_stop.get('lat', 45.4),
-                lon=first_stop.get('lon', 9.2),
+                lat=first_lat,
+                lon=first_lon,
                 route=route,
                 current_stop_index=0,
                 scheduled_departure=self.simulation_time + timedelta(minutes=random.randint(0, 30))
@@ -417,16 +454,16 @@ class IntegrationEngine:
         for train_data in self.network_data.get('trains', [])[:30]:
             route = train_data.get('route', [])
             for i in range(len(route) - 1):
-                # Route items are dicts with station_name, lat, lon
+                # Route items are dicts with station_name, lat, lon OR strings
                 source_stop = route[i]
                 target_stop = route[i + 1]
-                source = source_stop.get('station_name', 'UNKNOWN')
-                target = target_stop.get('station_name', 'UNKNOWN')
+                source = self._get_stop_station_name(source_stop)
+                target = self._get_stop_station_name(target_stop)
                 edge_key = f"{source}--{target}"
                 
                 if edge_key not in self.state_tracker.state.edges:
                     # Calculate distance from route data if available
-                    distance_km = target_stop.get('distance_from_previous_km', 20)
+                    distance_km = self._get_stop_distance(target_stop)
                     
                     edge = RailSegment(
                         source=source,
@@ -612,9 +649,10 @@ class IntegrationEngine:
             # End of route, restart
             train.current_stop_index = 0
             first_stop = train.route[0]
-            train.current_station = first_stop.get('station_name', 'UNKNOWN')
-            train.lat = first_stop.get('lat', 45.4)
-            train.lon = first_stop.get('lon', 9.2)
+            train.current_station = self._get_stop_station_name(first_stop)
+            lat, lon = self._get_stop_coordinates(first_stop)
+            train.lat = lat
+            train.lon = lon
             train.scheduled_departure = self.simulation_time + timedelta(minutes=random.randint(10, 30))
             return
         
@@ -623,8 +661,8 @@ class IntegrationEngine:
         current_stop = train.route[train.current_stop_index]
         next_stop = train.route[train.current_stop_index + 1]
         train.current_station = None
-        train.next_station = next_stop.get('station_name', 'UNKNOWN')
-        train.current_edge = f"{current_stop.get('station_name', 'UNKNOWN')}--{train.next_station}"
+        train.next_station = self._get_stop_station_name(next_stop)
+        train.current_edge = f"{self._get_stop_station_name(current_stop)}--{train.next_station}"
         train.speed_kmh = 80 if train.train_type == "regional" else 120
         train.position_km = 0
     
@@ -633,17 +671,22 @@ class IntegrationEngine:
         distance_per_tick = (train.speed_kmh / 3600) * self.tick_interval_sec
         train.position_km += distance_per_tick
         
-        # Get edge distance (default 30km if missing or zero)
-        edge_distance = train.route[train.current_stop_index + 1].get('distance_from_previous_km', 30)
+        # Get edge distance
+        next_stop = train.route[train.current_stop_index + 1]
+        edge_distance = self._get_stop_distance(next_stop)
         if not edge_distance or edge_distance <= 0:
             edge_distance = 30  # Default 30km between stations
         
         # Interpolate position
         progress = min(1.0, train.position_km / edge_distance)
-        start = train.route[train.current_stop_index]
-        end = train.route[train.current_stop_index + 1]
-        train.lat = start['lat'] + (end['lat'] - start['lat']) * progress
-        train.lon = start['lon'] + (end['lon'] - start['lon']) * progress
+        start_stop = train.route[train.current_stop_index]
+        end_stop = train.route[train.current_stop_index + 1]
+        
+        start_lat, start_lon = self._get_stop_coordinates(start_stop)
+        end_lat, end_lon = self._get_stop_coordinates(end_stop)
+        
+        train.lat = start_lat + (end_lat - start_lat) * progress
+        train.lon = start_lon + (end_lon - start_lon) * progress
         
         # Check if arrived
         if train.position_km >= edge_distance:
@@ -658,11 +701,12 @@ class IntegrationEngine:
             train.current_stop_index = 0  # Loop back to start
             
         current_stop = train.route[train.current_stop_index]
-        train.current_station = current_stop.get('station_name', 'UNKNOWN')
+        train.current_station = self._get_stop_station_name(current_stop)
         
         # Get next station if available
         if train.current_stop_index < len(train.route) - 1:
-            train.next_station = train.route[train.current_stop_index + 1].get('station_name')
+            next_stop = train.route[train.current_stop_index + 1]
+            train.next_station = self._get_stop_station_name(next_stop)
         else:
             train.next_station = None
             
@@ -670,8 +714,9 @@ class IntegrationEngine:
         train.status = "at_station"
         train.speed_kmh = 0
         train.position_km = 0
-        train.lat = current_stop.get('lat', 45.4)
-        train.lon = current_stop.get('lon', 9.2)
+        lat, lon = self._get_stop_coordinates(current_stop)
+        train.lat = lat
+        train.lon = lon
         
         # Schedule next departure
         dwell_time = 120 if train.train_type == "regional" else 180

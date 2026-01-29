@@ -1,0 +1,5 @@
+{
+  "status": "error",
+  "error": "ValueError: GROQ_API_KEY not found in environment variables. Please set it in .env file.",
+  "traceback": "Traceback (most recent call last):\n  File \"c:\\rail-mind-server\\backend\\integration\\unified_api.py\", line 607, in _run_orchestrator_sync\n    result = orchestrator_module.orchestrate(\n        conflict=conflict,\n    ...<2 lines>...\n        api_key=api_key\n    )\n  File \"C:\\rail-mind-server\\agents\\resolution-agent\\resolution_orchestrator.py\", line 773, in orchestrate\n    raise ValueError(\"GROQ_API_KEY not found in environment variables. Please set it in .env file.\")\nValueError: GROQ_API_KEY not found in environment variables. Please set it in .env file.\n"
+}

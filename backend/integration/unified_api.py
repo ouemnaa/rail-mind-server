@@ -34,16 +34,19 @@ from typing import Optional, List, Dict, Any
 import json
 from concurrent.futures import ThreadPoolExecutor
 
-# Add paths
-# BASE_DIR is backend folder, detection modules are in agents/detection-agent/
-BASE_DIR = Path(__file__).resolve().parent.parent  # backend folder
-PROJECT_ROOT = BASE_DIR.parent  # rail-mind folder
-RESOLUTION_AGENT_DIR = PROJECT_ROOT / "agents" / "resolution-agent"
-sys.path.insert(0, str(RESOLUTION_AGENT_DIR))
-DETECTION_AGENT_DIR = PROJECT_ROOT / "agents" / "detection-agent"
-sys.path.insert(0, str(DETECTION_AGENT_DIR / "prediction_confilt"))
-sys.path.insert(0, str(DETECTION_AGENT_DIR / "deterministic-detection"))
-sys.path.insert(0, str(BASE_DIR / "integration"))
+# Add project paths to sys.path
+# This allows importing from agents/ and backend/ modules
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+BACKEND_DIR = PROJECT_ROOT / "backend"
+AGENTS_DIR = PROJECT_ROOT / "agents"
+
+# Robust path injection
+sys.path.append(str(PROJECT_ROOT))
+sys.path.append(str(BACKEND_DIR))
+sys.path.append(str(BACKEND_DIR / "integration"))
+sys.path.append(str(AGENTS_DIR / "resolution-agent"))
+sys.path.append(str(AGENTS_DIR / "detection-agent" / "prediction_confilt"))
+sys.path.append(str(AGENTS_DIR / "detection-agent" / "deterministic-detection"))
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
