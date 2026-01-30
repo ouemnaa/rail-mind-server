@@ -1,0 +1,50 @@
+# =============================================================================
+# Rail-Mind GPU Support - Docker Compose Override
+# =============================================================================
+#
+# Use this file to enable GPU support for agent services.
+#
+# Requirements:
+# - NVIDIA GPU
+# - NVIDIA Container Toolkit installed
+#   https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+#
+# Usage:
+#   docker-compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+#
+# =============================================================================
+
+version: "3.8"
+
+services:
+  # ===========================================================================
+  # Detection Agent with GPU
+  # ===========================================================================
+  detection_agent:
+    build:
+      args:
+        # Use GPU-capable base image
+        BASE_IMAGE: pytorch/pytorch:2.2.0-cuda11.8-cudnn8-runtime
+        TORCH_INDEX_URL: ""  # Use image's torch
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # ===========================================================================
+  # Resolution Agent with GPU
+  # ===========================================================================
+  resolution_agent:
+    build:
+      args:
+        TORCH_INDEX_URL: ""  # Will install GPU torch
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

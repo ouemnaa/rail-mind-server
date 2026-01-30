@@ -1,0 +1,188 @@
+# =============================================================================
+# Rail-Mind Microservices - Docker Compose
+# =============================================================================
+#
+# This compose file runs the complete Rail-Mind system locally:
+# - Backend API (orchestrator)
+# - Detection Agent (ML predictions + rule detection + vision)
+# - Resolution Agent (hybrid RAG + mathematical solver)
+# - Qdrant Vector Database (for hybrid RAG)
+# - Redis (optional, for caching)
+#
+# Usage:
+#   # Start all services
+#   docker-compose up -d
+#
+#   # View logs
+#   docker-compose logs -f
+#
+#   # Stop all services
+#   docker-compose down
+#
+#   # Rebuild after code changes
+#   docker-compose up -d --build
+#
+# GPU Support (requires NVIDIA Container Toolkit):
+#   docker-compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+#
+# =============================================================================
+
+version: "3.8"
+
+services:
+  # ===========================================================================
+  # Detection Agent
+  # ===========================================================================
+  detection_agent:
+    build:
+      context: .
+      dockerfile: agents/detection_agent/Dockerfile
+      args:
+        # CPU-only build (faster, smaller)
+        TORCH_INDEX_URL: https://download.pytorch.org/whl/cpu
+    image: railmind/detection-agent:latest
+    container_name: railmind-detection
+    ports:
+      - "8001:8000"
+    environment:
+      - PORT=8000
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    restart: unless-stopped
+    networks:
+      - railmind-network
+
+  # ===========================================================================
+  # Resolution Agent
+  # ===========================================================================
+  resolution_agent:
+    build:
+      context: .
+      dockerfile: agents/resolution_agent/Dockerfile
+      args:
+        TORCH_INDEX_URL: https://download.pytorch.org/whl/cpu
+    image: railmind/resolution-agent:latest
+    container_name: railmind-resolution
+    ports:
+      - "8002:8000"
+    environment:
+      - PORT=8000
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      # LLM Configuration (required)
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_MODEL=${GROQ_MODEL:-llama-3.3-70b-versatile}
+      # Vector Database (for Hybrid RAG)
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_API_KEY=${QDRANT_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - railmind-network
+    depends_on:
+      qdrant:
+        condition: service_healthy
+
+  # ===========================================================================
+  # Backend API (Main Orchestrator)
+  # ===========================================================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: railmind/backend:latest
+    container_name: railmind-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      # Agent URLs (within Docker network)
+      - AGENT_DETECTION_URL=http://detection_agent:8000
+      - AGENT_RESOLUTION_URL=http://resolution_agent:8000
+      # LLM Configuration (for direct calls)
+      - GROQ_API_KEY=${GROQ_API_KEY}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - railmind-network
+    depends_on:
+      detection_agent:
+        condition: service_healthy
+      resolution_agent:
+        condition: service_healthy
+
+  # ===========================================================================
+  # Qdrant Vector Database (for Hybrid RAG)
+  # ===========================================================================
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: railmind-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"  # gRPC
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - railmind-network
+
+  # ===========================================================================
+  # Redis (Optional - for caching/sessions)
+  # ===========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: railmind-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - railmind-network
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  railmind-network:
+    driver: bridge
+    name: railmind-network
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  qdrant_storage:
+    name: railmind-qdrant-storage
+  redis_data:
+    name: railmind-redis-data
