@@ -7,7 +7,11 @@ WORKDIR /app
 
 # Install dependencies first (better caching)
 COPY backend/requirements.txt backend/requirements.txt
-RUN pip install --no-cache-dir -r backend/requirements.txt
+COPY backend/requirements-core.txt backend/requirements-core.txt
+RUN pip install --upgrade pip \
+ && pip install --no-cache-dir --prefer-binary -r backend/requirements-core.txt \
+ && pip install --no-cache-dir --prefer-binary -r backend/requirements.txt
+
 
 # Copy the full repo (backend + agents)
 COPY . .
